@@ -96,7 +96,7 @@ def build_hash_table(
     return hashes
 
 
-hashkey2bytes = lambda f1, f2, dt: f"{f1:04x}{f2:04x}{dt:04x}"
+hashkey2bytes = lambda f1, f2, dt: f"{f1:08x}{f2:08x}{dt:08x}"
 
 
 def hashes2hash_table(
