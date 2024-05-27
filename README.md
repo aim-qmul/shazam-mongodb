@@ -14,7 +14,7 @@ This is a minimal implementation of Shazam audio identification algorithm[^1] us
 pip install -r requirements.txt
 ```
 3. Install [MongoDB](https://docs.mongodb.com/manual/installation/) and start the server at localhost.
-4. Run the following command to benchmark the implementation. `--port` is optional and defaults to 28000. `--map` specifies the way to built peak pairs in the constellation maps. `wang` is the default value and is based on the paper. `delaunay` uses Delaunay triangulation to extract the pairs. 
+4. Run the following command to benchmark the implementation. `--port` is optional and should equal to the port number of the MongoDB server. `--map` specifies the way to build peak pairs in the constellation maps. `wang` is the default value and is based on the paper. `delaunay` uses Delaunay triangulation to extract the pairs. 
 ```bash
 python main.py /path/to/fingerprinted/audio/files /path/to/query/audio/files --port 28000 --map wang
 ```
