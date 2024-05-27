@@ -14,9 +14,6 @@ import json
 from tqdm import tqdm
 
 
-from utils import chain_functions
-
-
 def compute_constellation_map(
     Y: np.ndarray, dist_freq: int = 7, dist_time: int = 7, thresh_ratio: float = 0.01
 ) -> Tuple[np.ndarray, ...]:
@@ -96,6 +93,7 @@ def build_hash_table(
     return hashes
 
 
+# mongodb _id is 24 characters long
 hashkey2bytes = lambda f1, f2, dt: f"{f1:08x}{f2:08x}{dt:08x}"
 
 
@@ -125,14 +123,6 @@ def path2hashes(
         spec, dist_freq, dist_time, thresh_ratio
     )
 
-    # peak_pairs = wang_peak_pairs(
-    #     peak_freq_indexes,
-    #     peak_time_indexes,
-    #     zone_dist_time=zone_dist_time,
-    #     zone_dist_freq=zone_dist_freq,
-    #     zone_time_offset=zone_time_offset,
-    # )
-    # peak_pairs = delaunay_peak_pairs(peak_freq_indexes, peak_time_indexes)
     peak_pairs = peak_pair_func(peak_freq_indexes, peak_time_indexes)
 
     peak_freq_indexes = peak_freq_indexes.tolist()
