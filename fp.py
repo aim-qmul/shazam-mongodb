@@ -35,9 +35,9 @@ def wav2spec(path: PathLike, sr: int, n_fft: int, hop_length: int) -> np.ndarray
 def wang_peak_pairs(
     peak_freq_indexes: np.ndarray,
     peak_time_indexes: np.ndarray,
-    zone_dist_time: int,
-    zone_dist_freq: int,
-    zone_time_offset: int = 0,
+    zone_dist_time: int = 25,
+    zone_dist_freq: int = 15,
+    zone_time_offset: int = 20,
 ):
     target_zone_ratio = zone_dist_time / zone_dist_freq
     kdtree_freq = peak_freq_indexes * target_zone_ratio
@@ -70,7 +70,7 @@ def delaunay_peak_pairs(
     results = [[] for _ in range(len(peak_time_indexes))]
     for a, b in edges:
         results[a].append(b)
-    return results
+    return [np.array(x) for x in results]
 
 
 def build_hash_table(
@@ -116,9 +116,9 @@ def path2hashes(
     dist_freq: int = 7,
     dist_time: int = 15,
     thresh_ratio: float = 0.01,
-    zone_dist_time: int = 25,
-    zone_dist_freq: int = 15,
-    zone_time_offset: int = 20,
+    peak_pair_func: Callable[
+        [np.ndarray, np.ndarray], Iterable[np.ndarray]
+    ] = delaunay_peak_pairs,
 ):
     spec = wav2spec(path, sr, n_fft, hop_length)
     peak_freq_indexes, peak_time_indexes = compute_constellation_map(
@@ -132,7 +132,8 @@ def path2hashes(
     #     zone_dist_freq=zone_dist_freq,
     #     zone_time_offset=zone_time_offset,
     # )
-    peak_pairs = delaunay_peak_pairs(peak_freq_indexes, peak_time_indexes)
+    # peak_pairs = delaunay_peak_pairs(peak_freq_indexes, peak_time_indexes)
+    peak_pairs = peak_pair_func(peak_freq_indexes, peak_time_indexes)
 
     peak_freq_indexes = peak_freq_indexes.tolist()
     peak_time_indexes = peak_time_indexes.tolist()

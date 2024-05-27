@@ -1,26 +1,28 @@
 import argparse
 from pymongo import MongoClient
-from functools import reduce
+from functools import reduce, partial
 from pymongo.collection import Collection
 from pathlib import Path
 from os import PathLike
 from tqdm import tqdm
 from bson.objectid import ObjectId
 from collections import Counter
-from typing import List
+from typing import List, Callable, Tuple, Iterable
+import time
 
-from fp import path2hashes, hashes2hash_table
+from fp import path2hashes, hashes2hash_table, wang_peak_pairs, delaunay_peak_pairs
 from ai import get_time_differences
 
 
 def fingerprintBuilder(
     collection: Collection,
     database_folder: str,
+    path2hash_func: Callable[[PathLike], Iterable[Tuple[Tuple[int, int, int], int]]],
 ):
     files = list(Path(database_folder).glob("*.wav"))
     total_files = len(files)
     hashes = map(
-        path2hashes,
+        path2hash_func,
         files,
     )
 
@@ -29,21 +31,6 @@ def fingerprintBuilder(
         hashes,
         map(lambda f: f.stem, files),
     )
-
-    def extend_data(col: Collection, data: dict):
-        for k, v in data.items():
-            # k is the hash (_id)
-            # v is the list of tuples (song_id, time)
-            col.update_one(
-                {"_id": ObjectId(k)}, {"$push": {"values": {"$each": v}}}, upsert=True
-            )
-        return col
-
-    # reduce(
-    #     extend_data,
-    #     tqdm(hash_tables, total=total_files, desc="Building fingerprint database"),
-    #     collection,
-    # )
 
     def inplace_extend(x, y):
         for k, v in y.items():
@@ -63,19 +50,17 @@ def fingerprintBuilder(
             for k, v in merged_database_hash_table.items()
         ]
     )
-    print(len(restuls.inserted_ids))
-
-    # for k, v in tqdm(merged_database_hash_table.items()):
-    #     collection.insert_one({"_id": ObjectId(k), "values": v})
+    print(f"Number of inserted documents: {len(restuls.inserted_ids)}")
 
 
 def audioIdentification(
     collection: Collection,
     files: List[Path],
+    path2hash_func: Callable[[PathLike], Iterable[Tuple[Tuple[int, int, int], int]]],
 ) -> List[str]:
     total_files = len(files)
     hashes = map(
-        path2hashes,
+        path2hash_func,
         files,
     )
 
@@ -107,17 +92,34 @@ def audioIdentification(
     return restuls
 
 
-def main(db_path: str, q_path: str):
-    client = MongoClient("localhost", 28000)
+def main(db_path: str, q_path: str, port: int, map_type: str):
+    client = MongoClient("localhost", port)
     db = client["test"]
     collection = db["fingerprints"]
 
     # Erase the collection
     collection.delete_many({})
-    fingerprintBuilder(collection, db_path)
+
+    match map_type:
+        case "wang":
+            peak_pair_func = wang_peak_pairs
+        case "delaunay":
+            peak_pair_func = delaunay_peak_pairs
+        case _:
+            raise ValueError("Invalid map type")
+
+    path2hash_func = partial(
+        path2hashes,
+        peak_pair_func=peak_pair_func,
+    )
+
+    fingerprintBuilder(collection, db_path, path2hash_func)
 
     q_files = list(Path(q_path).glob("*.wav"))
-    results = audioIdentification(collection, q_files)
+    start = time.time()
+    results = audioIdentification(collection, q_files, path2hash_func)
+    elapsed = time.time() - start
+    print(f"Averaged {elapsed / len(q_files) * 1000:.2f} ms per query")
     labels = [f.stem for f in q_files]
 
     # evaluation
@@ -132,6 +134,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("db_path", type=str)
     parser.add_argument("q_path", type=str)
+    parser.add_argument("--port", type=int, default=28000)
+    parser.add_argument("--map", type=str, choices=["wang", "delaunay"], default="wang")
     args = parser.parse_args()
 
-    main(args.db_path, args.q_path)
+    main(args.db_path, args.q_path, args.port, args.map)
