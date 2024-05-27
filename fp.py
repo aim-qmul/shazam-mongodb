@@ -1,6 +1,5 @@
 from collections import defaultdict
 from os import PathLike
-import re
 import numpy as np
 from pathlib import Path
 from scipy.ndimage import maximum_filter

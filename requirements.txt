@@ -1,0 +1,6 @@
+pymongo
+tqdm
+numpy
+scipy
+scikit-learn
+librosa
